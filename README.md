@@ -35,6 +35,20 @@ When a session starts, `PlaySessionModel` creates a `LocalRoundRuntime`, starts 
 
 `GameInstaller.Update()` ticks the play session and table presentation. This keeps Unity-specific timing outside of the domain model.
 
+## Main Class Interactions
+
+High-level gameplay flow:
+
+`UI button -> ScreenViewModel -> PlaySessionModel -> LocalRoundRuntime -> RoundEngine -> RoundState/RoundEvents -> UI/TableModel`
+
+- `GameInstaller` is the composition root. It creates domain services, gameplay models, UI models, and presentation models, then updates the session and table models every frame.
+- `RoundEngine` owns the round state changes. It validates commands, deals cards, advances the active player, checks bust/end conditions, and returns updated state plus events.
+- `PlaySessionModel` is the bridge between UI/gameplay code and the domain engine. It starts and finishes local rounds, forwards human commands, listens to round events, enables/disables the human turn, and publishes round results.
+- `LocalRoundRuntime` wraps the domain `RoundEngine` behind `IRoundRuntime`. This keeps the session model independent from the concrete runtime and leaves room for a remote/server-backed implementation later.
+- `SimpleAiController` reacts when the current player becomes the AI. After a short delay, it asks `IAiStrategy` for a decision and sends the command through `IRoundRuntime`.
+- `GameplayScreenViewModel`, `MenuScreenViewModel`, and `ResultsScreenViewModel` handle screen-level user actions and navigation. They do not contain game rules.
+- `TableModel` observes round state updates and synchronizes Unity card views with the domain hands. It is presentation-only and does not affect game decisions.
+
 ## Architecture Notes
 
 The domain logic is intentionally detached from Unity to keep it testable and reusable. It is written in a relatively general way, so supporting more than two players should mostly be a matter of adding an appropriate runtime/presentation layer. The current Unity presentation is deliberately limited to exactly two visible players for simplicity.
